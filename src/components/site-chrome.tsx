@@ -14,6 +14,9 @@ export function SiteHeader() {
           {SITE_NAME}
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
+          <ButtonLink href="/" variant="ghost" size="sm">
+            Home
+          </ButtonLink>
           {professions.slice(0, 4).map((p) => (
             <ButtonLink key={p.slug} href={`/${p.slug}`} variant="ghost" size="sm">
               {p.name}
@@ -25,6 +28,9 @@ export function SiteHeader() {
           <AuthStatus />
         </nav>
         <div className="flex items-center gap-1 md:hidden">
+          <ButtonLink href="/" size="sm" variant="ghost">
+            Home
+          </ButtonLink>
           <ButtonLink href="/pricing" size="sm" variant="ghost">
             Pricing
           </ButtonLink>

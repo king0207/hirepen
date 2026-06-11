@@ -5,6 +5,7 @@ import { streamChat } from "@/lib/ai";
 import { buildMessages } from "@/lib/prompts";
 import { checkAndRecordUsage, logGeneration } from "@/lib/rate-limit";
 import { ensureSessionId } from "@/lib/session";
+import { getSessionUser } from "@/lib/auth/session";
 
 const generateSchema = z.object({
   professionSlug: z.string().min(1),
@@ -42,17 +43,21 @@ export async function POST(request: NextRequest) {
   }
 
   const sessionId = await ensureSessionId();
-  const usage = await checkAndRecordUsage(sessionId);
+  const user = await getSessionUser();
 
-  if (!usage.allowed) {
-    return Response.json(
-      {
-        error: `Daily free limit reached (${usage.limit}/day). Upgrade on /pricing.`,
-        used: usage.used,
-        limit: usage.limit,
-      },
-      { status: 429 },
-    );
+  // Admins are exempt from the daily free limit.
+  if (!user?.isAdmin) {
+    const usage = await checkAndRecordUsage(sessionId);
+    if (!usage.allowed) {
+      return Response.json(
+        {
+          error: `Daily free limit reached (${usage.limit}/day). Upgrade on /pricing.`,
+          used: usage.used,
+          limit: usage.limit,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const messages = buildMessages({
@@ -68,7 +73,12 @@ export async function POST(request: NextRequest) {
   const response = await streamChat(messages);
 
   if (response.ok) {
-    await logGeneration(sessionId, profession.slug, parsed.data.docType);
+    await logGeneration({
+      sessionId,
+      userId: user?.id ?? null,
+      professionSlug: profession.slug,
+      docType: parsed.data.docType,
+    });
   }
 
   return response;

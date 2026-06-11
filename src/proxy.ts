@@ -1,48 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { getSupabasePublicConfig } from "@/lib/env";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 /**
- * Next.js 16 renamed the `middleware` convention to `proxy`.
- * Refreshes the Supabase auth session on each request and protects /account.
+ * Next.js 16 renamed the `middleware` convention to `proxy` (Node.js runtime).
+ * Protects /account by verifying our self-managed signed session cookie.
  */
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
 
-  const config = getSupabasePublicConfig();
-  if (!config) return response;
-
-  const supabase = createServerClient(config.url, config.anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user && request.nextUrl.pathname.startsWith("/account")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+  // Both /account and /admin require a valid session. The admin-only role check
+  // happens in the /admin page itself (it can read isAdmin from the session).
+  if (pathname.startsWith("/account") || pathname.startsWith("/admin")) {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const valid = await verifySessionToken(token);
+    if (!valid) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)$).*)",
-  ],
+  matcher: ["/account/:path*", "/admin/:path*"],
 };

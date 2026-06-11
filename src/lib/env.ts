@@ -51,8 +51,28 @@ export function getSupabasePublicConfig() {
   return { url, anonKey };
 }
 
+/**
+ * Self-managed session secret (used to sign session JWTs and captcha cookies).
+ * Generate with: openssl rand -base64 32
+ */
+export function getAuthSecret(): string | null {
+  const secret = process.env.AUTH_SESSION_SECRET?.trim();
+  if (!secret || secret.length < 16) return null;
+  return secret;
+}
+
+/** Password/captcha login needs: a session secret + Supabase (for app_users storage). */
+export function isPasswordAuthEnabled() {
+  return Boolean(getAuthSecret() && getSupabaseConfig());
+}
+
+/** GitHub login needs: a session secret + Supabase public config (OAuth). */
+export function isGithubAuthEnabled() {
+  return Boolean(getAuthSecret() && getSupabasePublicConfig());
+}
+
 export function isAuthEnabled() {
-  return Boolean(getSupabasePublicConfig());
+  return isPasswordAuthEnabled() || isGithubAuthEnabled();
 }
 
 export function getFreeDailyLimit(): number {

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -22,11 +21,12 @@ export function LogoutButton({
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) return;
     setLoading(true);
-    await supabase.auth.signOut();
-    setLoading(false);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setLoading(false);
+    }
     toast.success("Signed out.");
     router.push("/");
     router.refresh();

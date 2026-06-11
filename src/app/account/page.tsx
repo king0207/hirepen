@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/session";
+import { listGenerations } from "@/lib/data";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ButtonLink } from "@/components/button-link";
 import {
@@ -16,16 +17,23 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+const DOC_LABEL: Record<string, string> = {
+  resume: "Resume",
+  cover_letter: "Cover letter",
+};
+
 export default async function AccountPage() {
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login?redirect=/account");
+
+  const history = await listGenerations({ userId: user.id, limit: 20 });
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <Card>
         <CardHeader>
           <CardTitle>Your account</CardTitle>
-          <CardDescription>Manage your CareerDraft session.</CardDescription>
+          <CardDescription>Manage your HirePen session.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1 text-sm">
@@ -34,13 +42,13 @@ export default async function AccountPage() {
               {user.email}
             </p>
             <p>
-              <span className="text-muted-foreground">User ID: </span>
-              <code className="rounded bg-muted px-1 text-xs">{user.id}</code>
+              <span className="text-muted-foreground">Sign-in method: </span>
+              {user.provider === "github" ? "GitHub" : "Email & password"}
             </p>
-            {user.created_at && (
+            {user.isAdmin && (
               <p>
-                <span className="text-muted-foreground">Member since: </span>
-                {new Date(user.created_at).toLocaleDateString()}
+                <span className="text-muted-foreground">Role: </span>
+                <code className="rounded bg-muted px-1 text-xs">admin</code>
               </p>
             )}
           </div>
@@ -50,8 +58,44 @@ export default async function AccountPage() {
             <ButtonLink href="/" variant="outline">
               Back to tools
             </ButtonLink>
+            {user.isAdmin && (
+              <ButtonLink href="/admin" variant="outline">
+                Admin dashboard
+              </ButtonLink>
+            )}
             <LogoutButton variant="outline" />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Recent generations</CardTitle>
+          <CardDescription>Your last {history.length || 0} documents.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No generations yet. Pick a profession on the home page to get started.
+            </p>
+          ) : (
+            <ul className="divide-y text-sm">
+              {history.map((g) => (
+                <li key={g.id} className="flex items-center justify-between py-2">
+                  <span>
+                    <span className="font-medium capitalize">{g.profession_slug}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {DOC_LABEL[g.doc_type] ?? g.doc_type}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {new Date(g.created_at).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

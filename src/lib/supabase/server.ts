@@ -46,12 +46,3 @@ export async function createSupabaseServerClient() {
     },
   });
 }
-
-export async function getCurrentUser() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return null;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}

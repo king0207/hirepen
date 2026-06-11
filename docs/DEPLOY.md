@@ -66,41 +66,59 @@ AI_MODEL=openai/gpt-4o-mini
 
 ---
 
-## 2. Supabase（必需：登录 + 推荐用于限次/日志/支付记录）
+## 2. Supabase（必需：存用户 + GitHub 登录 + 限次/日志）
 
 1. 打开 https://supabase.com → New project，记下数据库区域（建美国区，离用户近）
 2. 项目创建后，进入 **SQL Editor** → New query
 3. 把 `supabase/migrations/001_initial.sql` 全部内容粘贴进去 → Run
+   - 该脚本会建 `app_users`（账号密码用户表）、`usage_limits`、`generations`、`payment_events`，并开启 RLS（仅服务端 service role 可访问）。
 4. 进入 **Project Settings → API**，复制三项：
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key（保密！）→ `SUPABASE_SERVICE_ROLE_KEY`
 
-> 不配 Supabase：**登录功能不可用**（登录页提示未配置），限次退化为内存计数（仅本地测试）。
+> 不配 Supabase：**登录功能不可用**，限次退化为内存计数（仅本地测试）。
 
-### 2.1 配置登录（账号密码 + 邮箱验证码）
+### 2.1 登录架构（自建会话）
 
-本项目用 **Supabase Auth**，支持两种登录：邮箱+密码、邮箱一次性验证码（OTP）。
+本项目**不使用** Supabase 的邮箱/密码登录，而是自建会话：
 
-1. **Authentication → Sign In / Providers → Email**：确认 **Email** 已启用
-2. **账号密码**：默认开启。
-   - 若开启了 *Confirm email*（默认开），用户注册后需点邮件确认链接才能用密码登录。
-   - 想注册即登录：可在该页 **关闭 Confirm email**（测试方便，正式建议保留）。
-3. **邮箱验证码（OTP）**：
-   - 进入 **Authentication → Emails → Templates → Magic Link**
-   - 模板里必须包含 **`{{ .Token }}`**（这就是 6 位验证码）。例如：
-     ```
-     <p>Your login code is: <strong>{{ .Token }}</strong></p>
-     ```
-   - 这样 `signInWithOtp` 发出的邮件会带验证码，用户在 `/login` 的「Email code」标签输入即可登录。
-4. **URL 配置**：**Authentication → URL Configuration**
-   - Site URL：本地填 `http://localhost:3000`，上线后改成 `https://你的域名`
-   - Redirect URLs：加入上述两个地址
-5. **发信限制**：Supabase 自带的邮件服务每小时有发送上限，正式上线建议在
-   **Authentication → Emails → SMTP** 接入自有 SMTP（如 Resend / SendGrid），否则验证码邮件可能发不出去。
+- **账号密码**：用户存在 `app_users` 表，密码用 scrypt 哈希；登录/注册时需通过**图形验证码**（数字+字母）。
+- **GitHub 登录**：走 Supabase OAuth，回调后转换成我们自己的签名 Cookie 会话。
+- **会话**：统一用一个签名 Cookie（`hp_session`，jose 签发），由 `AUTH_SESSION_SECRET` 签名。
+- **受保护路由**：`/account` 需登录（`src/proxy.ts` 校验会话）。职业页等保持公开以利 SEO。
 
-> 受保护路由：`/account` 需登录访问（由 `src/proxy.ts` 拦截）。其它页面（含职业页）保持公开以利 SEO。
-> 想强制「生成前必须登录」：在 `src/app/api/generate/route.ts` 里加一行用户校验即可（见第 9 节）。
+#### a) 生成会话密钥（必需）
+
+```bash
+openssl rand -base64 32
+```
+把结果填到 `AUTH_SESSION_SECRET`（本地 `.env.local`，线上 Vercel 环境变量）。
+
+#### b) 开启 GitHub 登录（Supabase OAuth）
+
+1. **GitHub** → Settings → Developer settings → **OAuth Apps** → New OAuth App
+   - Homepage URL：`https://你的域名`（本地可填 `http://localhost:3000`）
+   - **Authorization callback URL**：填 Supabase 的回调地址
+     `https://<你的项目ref>.supabase.co/auth/v1/callback`
+   - 创建后拿到 **Client ID** 和 **Client Secret**
+2. **Supabase** → Authentication → **Providers → GitHub** → 开启，填入 Client ID / Secret → Save
+3. **Supabase** → Authentication → **URL Configuration**
+   - Site URL：本地 `http://localhost:3000`，上线后改 `https://你的域名`
+   - Redirect URLs：加入 `http://localhost:3000/auth/callback` 和 `https://你的域名/auth/callback`
+
+> 说明：GitHub 把用户送回 Supabase 的 `/auth/v1/callback`，Supabase 再回到我们站点的
+> `/auth/callback`，我们在那里换取用户信息、写入 `app_users` 并签发自己的会话。
+
+#### c) 设置管理员（可选）
+
+管理员由 `app_users.is_admin` 控制。先注册/登录一次，再在 SQL Editor 执行：
+
+```sql
+update public.app_users set is_admin = true where lower(email) = lower('you@example.com');
+```
+
+> 想强制「生成前必须登录」：在 `src/app/api/generate/route.ts` 里加一行会话校验（见第 9 节）。
 
 ---
 
@@ -180,7 +198,8 @@ git push -u origin main
 
 ### 5.4 部署后回填
 
-- **Supabase Auth URL**：把 Site URL / Redirect URLs 改成正式域名（否则登录确认/验证码邮件里的链接指向 localhost）
+- **Supabase Auth URL**：把 Site URL / Redirect URLs 改成正式域名，并在 Redirect URLs 加上 `https://你的域名/auth/callback`（否则 GitHub 登录回跳失败）
+- **GitHub OAuth App**：把 Homepage URL 改成正式域名（callback 仍是 Supabase 的 `/auth/v1/callback`，不用改）
 - 把 Creem webhook URL 改成正式域名：`https://你的域名/api/webhooks/creem`
 - 把正式域名提交到 Google Search Console，提交 `https://你的域名/sitemap.xml`
 
@@ -197,7 +216,10 @@ AI_API_KEY=sk-...
 AI_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
 AI_MODEL=qwen-flash-us
 
-# Supabase（必需：登录 + 限次/日志）
+# 会话密钥（必需：登录）— openssl rand -base64 32
+AUTH_SESSION_SECRET=...
+
+# Supabase（必需：用户表 + GitHub 登录 + 限次/日志）
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
@@ -231,17 +253,19 @@ npm.cmd run dev
 
 - 生成测试：http://localhost:3000/nurse → 填表 → Generate，能流式出文字即说明 AI 配好了。
 - 登录测试：http://localhost:3000/login →
-  - 「Password」标签：输入邮箱+密码 → Sign up 注册（若开了邮箱确认，去邮箱点确认）→ Sign in 登录
-  - 「Email code」标签：输入邮箱 → Send code → 收邮件里的 6 位码 → Verify & sign in
+  - 「Password」标签：输入邮箱+密码+图形验证码 → Sign up 注册 / Sign in 登录
+  - 「GitHub」按钮：跳转 GitHub 授权 → 回跳后自动建立会话（需先配好第 2.1.b 节）
   - 登录后右上角出现「Account / Log out」，访问 `/account` 可见账户信息。
+  - 验证码看不清可点图片刷新。
 
 ---
 
 ## 8. 上线最小可用清单
 
 - [ ] AI：`AI_API_KEY` 已填，本地能生成
+- [ ] 会话：`AUTH_SESSION_SECRET` 已生成填好
 - [ ] Supabase：跑过建表 SQL，三个 key 填好
-- [ ] 登录：Email provider 已启用；OTP 邮件模板含 `{{ .Token }}`；Auth URL 指向正确域名
+- [ ] 登录：账号密码 + 验证码可注册登录；（可选）GitHub OAuth 已配好、Redirect URLs 含 `/auth/callback`
 - [ ] 代码推 GitHub，Vercel 部署成功
 - [ ] （收款）Creem 产品建好、webhook 指向正式域名、4 个变量填好、`/pricing` 按钮变实
 - [ ] （广告）AdSense 通过后填 client + 两个 slot
@@ -257,9 +281,9 @@ npm.cmd run dev
 `src/app/api/generate/route.ts` 顶部加：
 
 ```ts
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/session";
 // ...在 POST 内、校验通过后：
-const user = await getCurrentUser();
+const user = await getSessionUser();
 if (!user) {
   return Response.json({ error: "Please log in to generate." }, { status: 401 });
 }

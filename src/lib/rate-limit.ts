@@ -71,17 +71,19 @@ export async function checkAndRecordUsage(sessionId: string): Promise<{
   return { allowed: true, used: newCount, limit };
 }
 
-export async function logGeneration(
-  sessionId: string,
-  professionSlug: string,
-  docType: "resume" | "cover_letter",
-): Promise<void> {
+export async function logGeneration(params: {
+  sessionId: string;
+  userId?: string | null;
+  professionSlug: string;
+  docType: "resume" | "cover_letter";
+}): Promise<void> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return;
 
   await supabase.from("generations").insert({
-    session_id: sessionId,
-    profession_slug: professionSlug,
-    doc_type: docType,
+    session_id: params.sessionId,
+    user_id: params.userId ?? null,
+    profession_slug: params.professionSlug,
+    doc_type: params.docType,
   });
 }
