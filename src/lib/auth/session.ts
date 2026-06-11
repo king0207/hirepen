@@ -67,7 +67,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
+  // Match createSession options so the browser reliably drops the cookie.
+  cookieStore.set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 /** Verify a raw token string (used by proxy where cookies() helpers differ). */

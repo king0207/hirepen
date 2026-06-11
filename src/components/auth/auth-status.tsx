@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { AUTH_CHANGED_EVENT } from "@/lib/auth/client-events";
 import { ButtonLink } from "@/components/button-link";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -12,21 +13,21 @@ export function AuthStatus() {
   const pathname = usePathname();
   const [user, setUser] = useState<MeUser | null | undefined>(undefined);
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/auth/me", { cache: "no-store" })
+  const refresh = useCallback(() => {
+    fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
       .then((r) => r.json() as Promise<MeResponse>)
-      .then((data) => {
-        if (active) setUser(data.user ?? null);
-      })
-      .catch(() => {
-        if (active) setUser(null);
-      });
-    return () => {
-      active = false;
-    };
-    // Re-check whenever the route changes (e.g. right after login/logout).
-  }, [pathname]);
+      .then((data) => setUser(data.user ?? null))
+      .catch(() => setUser(null));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [pathname, refresh]);
+
+  useEffect(() => {
+    window.addEventListener(AUTH_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, refresh);
+  }, [refresh]);
 
   // Render nothing until we know the auth state (avoids hydration flicker).
   if (user === undefined) return null;
@@ -49,7 +50,7 @@ export function AuthStatus() {
       <ButtonLink href="/account" variant="ghost" size="sm">
         Account
       </ButtonLink>
-      <LogoutButton />
+      <LogoutButton onLoggedOut={() => setUser(null)} />
     </div>
   );
 }

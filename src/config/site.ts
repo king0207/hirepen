@@ -1,4 +1,4 @@
-export const SITE_NAME = "CareerDraft";
+export const SITE_NAME = "HirePen";
 
 export function getSiteUrl(): string {
   const url = process.env.NEXT_PUBLIC_SITE_URL?.trim();

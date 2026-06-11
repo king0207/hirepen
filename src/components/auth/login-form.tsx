@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { notifyAuthChanged } from "@/lib/auth/client-events";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ export function LoginForm({ passwordEnabled, githubEnabled }: LoginFormProps) {
   }
 
   function done() {
+    notifyAuthChanged();
     router.push(redirectTo);
     router.refresh();
   }
