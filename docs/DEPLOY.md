@@ -282,7 +282,7 @@ NEXT_PUBLIC_SITE_URL=https://hirepen.net
 ```
 # ── 必需 ──
 NEXT_PUBLIC_SITE_URL=https://hirepen.net
-NEXT_PUBLIC_SUPPORT_EMAIL=support@hirepen.net   # 页脚/Privacy/Terms；Creem 正式收款审核需要
+NEXT_PUBLIC_SUPPORT_EMAIL=wukaiwei@hirepen.net   # 页脚/Privacy/Terms；Creem 正式收款审核需要
 
 AI_API_KEY=sk-...
 AI_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
