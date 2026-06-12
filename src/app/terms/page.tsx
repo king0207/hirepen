@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LegalContact } from "@/components/legal-contact";
 import { SITE_NAME } from "@/config/site";
 
 export const metadata: Metadata = {
@@ -37,6 +38,8 @@ export default function TermsPage() {
       </p>
       <h2>Changes</h2>
       <p>We may update these terms. Continued use after changes constitutes acceptance.</p>
+      <h2>Contact</h2>
+      <LegalContact />
     </article>
   );
 }

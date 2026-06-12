@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SITE_NAME } from "@/config/site";
+import { SITE_NAME, getSupportEmail } from "@/config/site";
 import { getEnabledProfessions } from "@/config/professions";
 import { ButtonLink } from "@/components/button-link";
 import { AuthStatus } from "@/components/auth/auth-status";
@@ -42,11 +42,18 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const supportEmail = getSupportEmail();
+
   return (
     <footer className="mt-auto border-t bg-muted/30">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
         <p>© {new Date().getFullYear()} {SITE_NAME}. AI drafts require your review before submitting.</p>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
+          {supportEmail && (
+            <a href={`mailto:${supportEmail}`} className="hover:text-foreground">
+              Contact
+            </a>
+          )}
           <Link href="/privacy" className="hover:text-foreground">
             Privacy
           </Link>

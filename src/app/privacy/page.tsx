@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LegalContact } from "@/components/legal-contact";
 import { SITE_NAME } from "@/config/site";
 
 export const metadata: Metadata = {
@@ -34,13 +35,13 @@ export default function PrivacyPage() {
       </p>
       <h2>Third-party services</h2>
       <ul>
-        <li>DeepSeek — AI text generation</li>
+        <li>AI provider — text generation (OpenAI-compatible API)</li>
         <li>Supabase — database and analytics storage</li>
         <li>Creem — payment processing</li>
         <li>Google AdSense — advertising (free tier)</li>
       </ul>
       <h2>Contact</h2>
-      <p>For privacy requests, contact the site operator via your support email once published.</p>
+      <LegalContact />
     </article>
   );
 }
