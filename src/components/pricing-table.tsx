@@ -51,7 +51,7 @@ export function PricingTable() {
             <Badge>Popular</Badge>
           </div>
           <CardDescription>More generations, no ads</CardDescription>
-          <p className="text-3xl font-bold">$4.99<span className="text-base font-normal">/mo</span></p>
+          <p className="text-3xl font-bold">$1.99<span className="text-base font-normal">/mo</span></p>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>50 generations per month</p>
@@ -74,7 +74,7 @@ export function PricingTable() {
         <CardHeader>
           <CardTitle>Lifetime</CardTitle>
           <CardDescription>One-time payment</CardDescription>
-          <p className="text-3xl font-bold">$29</p>
+          <p className="text-3xl font-bold">$29.90</p>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>Unlimited generations</p>

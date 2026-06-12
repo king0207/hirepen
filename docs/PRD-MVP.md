@@ -143,8 +143,8 @@
 | 计划 | 价格 | 权益 |
 |------|------|------|
 | Free | $0 | 3 次/天，有广告，仅 txt |
-| Pro | $4.99/mo | 50 次/月，无广告，docx（v2） |
-| Lifetime | $29 once | 无限次，无广告（可设 soft cap） |
+| Pro | $1.99/mo | 50 次/月，无广告，docx（v2） |
+| Lifetime | $29.90 once | 无限次，无广告（可设 soft cap） |
 
 Creem 按钮：`Buy with Creem` → `https://creem.io/checkout/{productId}`（以 Creem 文档为准）。
 
