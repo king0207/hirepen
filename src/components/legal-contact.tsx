@@ -6,13 +6,5 @@ export function LegalContact() {
     return <p>Support email is shown in the site footer when configured.</p>;
   }
 
-  return (
-    <p>
-      For questions, contact us at{" "}
-      <a href={`mailto:${email}`} className="text-primary underline-offset-4 hover:underline">
-        {email}
-      </a>
-      .
-    </p>
-  );
+  return <p>For questions, contact us at {email}.</p>;
 }

@@ -68,17 +68,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      <section className="border-t bg-muted/20">
-        <div className="mx-auto max-w-6xl px-4 py-12 text-sm text-muted-foreground">
-          <p>
-            {SITE_NAME} uses one shared AI engine behind every career page. To add or hide a
-            profession later, edit{" "}
-            <code className="rounded bg-muted px-1">src/config/professions.ts</code> and set{" "}
-            <code className="rounded bg-muted px-1">enabled: true/false</code>.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

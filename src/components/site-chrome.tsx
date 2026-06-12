@@ -50,9 +50,9 @@ export function SiteFooter() {
         <p>© {new Date().getFullYear()} {SITE_NAME}. AI drafts require your review before submitting.</p>
         <div className="flex flex-wrap gap-4">
           {supportEmail && (
-            <a href={`mailto:${supportEmail}`} className="hover:text-foreground">
-              Contact
-            </a>
+            <span className="cursor-default">
+              Contact: {supportEmail}
+            </span>
           )}
           <Link href="/privacy" className="hover:text-foreground">
             Privacy
