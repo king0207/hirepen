@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AUTH_CHANGED_EVENT } from "@/lib/auth/client-events";
 import type { Profession, DocType } from "@/types/profession";
 import { AdSlot } from "@/components/ad-slot";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,23 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [controller, setController] = useState<AbortController | null>(null);
+  const [showAds, setShowAds] = useState(true);
 
   const slotTop = process.env.NEXT_PUBLIC_ADSENSE_SLOT_TOP?.trim();
   const slotBottom = process.env.NEXT_PUBLIC_ADSENSE_SLOT_BOTTOM?.trim();
+
+  useEffect(() => {
+    function refreshAds() {
+      fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
+        .then((r) => r.json() as Promise<{ user?: { showAds?: boolean } | null }>)
+        .then((data) => setShowAds(data.user?.showAds ?? true))
+        .catch(() => setShowAds(true));
+    }
+
+    refreshAds();
+    window.addEventListener(AUTH_CHANGED_EVENT, refreshAds);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, refreshAds);
+  }, []);
 
   async function handleGenerate() {
     if (!name.trim()) {
@@ -127,7 +142,7 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="space-y-4">
-        <AdSlot slotId={slotTop} className="min-h-[90px] rounded-lg" />
+        {showAds && <AdSlot slotId={slotTop} className="min-h-[90px] rounded-lg" />}
 
         <Card>
           <CardHeader>
@@ -257,7 +272,7 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
           </CardContent>
         </Card>
 
-        <AdSlot slotId={slotBottom} className="min-h-[90px] rounded-lg" />
+        {showAds && <AdSlot slotId={slotBottom} className="min-h-[90px] rounded-lg" />}
       </div>
     </div>
   );

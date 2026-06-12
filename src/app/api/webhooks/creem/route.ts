@@ -1,5 +1,10 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { verifyCreemWebhookSignature } from "@/lib/creem";
+import {
+  applyPlanFromCreemProduct,
+  downgradeProUser,
+  parseCreemEventData,
+} from "@/lib/plans";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -28,11 +33,20 @@ export async function POST(request: Request) {
     });
   }
 
+  const ctx = parseCreemEventData(event.data);
+
   switch (event.type) {
     case "checkout.completed":
+      await applyPlanFromCreemProduct(ctx);
+      break;
     case "subscription.created":
+    case "subscription.active":
+    case "subscription.paid":
+      await applyPlanFromCreemProduct(ctx);
+      break;
     case "subscription.canceled":
-      // v2: map customer email / metadata to entitlements
+    case "subscription.expired":
+      await downgradeProUser(ctx);
       break;
     default:
       break;

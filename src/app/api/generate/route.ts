@@ -4,6 +4,7 @@ import { getProfessionBySlug } from "@/config/professions";
 import { streamChat } from "@/lib/ai";
 import { buildMessages } from "@/lib/prompts";
 import { checkAndRecordUsage, logGeneration } from "@/lib/rate-limit";
+import { getUserPlan } from "@/lib/plans";
 import { ensureSessionId } from "@/lib/session";
 import { getSessionUser } from "@/lib/auth/session";
 
@@ -44,20 +45,30 @@ export async function POST(request: NextRequest) {
 
   const sessionId = await ensureSessionId();
   const user = await getSessionUser();
+  const plan = user ? await getUserPlan(user.id) : "free";
 
-  // Admins are exempt from the daily free limit.
-  if (!user?.isAdmin) {
-    const usage = await checkAndRecordUsage(sessionId);
-    if (!usage.allowed) {
-      return Response.json(
-        {
-          error: `Daily free limit reached (${usage.limit}/day). Upgrade on /pricing.`,
-          used: usage.used,
-          limit: usage.limit,
-        },
-        { status: 429 },
-      );
-    }
+  const usage = await checkAndRecordUsage({
+    sessionId,
+    userId: user?.id,
+    plan,
+    isAdmin: user?.isAdmin,
+  });
+
+  if (!usage.allowed) {
+    const error =
+      usage.period === "month"
+        ? `Monthly Pro limit reached (${usage.limit}/month). Resets next month or upgrade to Lifetime on /pricing.`
+        : `Daily free limit reached (${usage.limit}/day). Upgrade on /pricing.`;
+
+    return Response.json(
+      {
+        error,
+        used: usage.used,
+        limit: usage.limit,
+        period: usage.period,
+      },
+      { status: 429 },
+    );
   }
 
   const messages = buildMessages({

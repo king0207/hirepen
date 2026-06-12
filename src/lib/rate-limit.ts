@@ -1,4 +1,5 @@
-import { getFreeDailyLimit } from "@/lib/env";
+import { getFreeDailyLimit, getProMonthlyLimit } from "@/lib/env";
+import type { UserPlan } from "@/lib/plans";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 const memoryUsage = new Map<string, { date: string; count: number }>();
@@ -7,40 +8,50 @@ function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function memoryKey(sessionId: string): string {
-  return `${sessionId}:${todayKey()}`;
+function monthStartKey(): string {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}-01`;
 }
 
-async function getCount(sessionId: string): Promise<number> {
+function memoryKey(bucketId: string, periodKey: string): string {
+  return `${bucketId}:${periodKey}`;
+}
+
+function usageBucketId(sessionId: string, userId?: string | null): string {
+  return userId ? `user:${userId}` : sessionId;
+}
+
+async function getCount(bucketId: string, periodKey: string): Promise<number> {
   const supabase = getSupabaseAdmin();
-  const date = todayKey();
 
   if (supabase) {
     const { data } = await supabase
       .from("usage_limits")
       .select("count")
-      .eq("session_id", sessionId)
-      .eq("usage_date", date)
+      .eq("session_id", bucketId)
+      .eq("usage_date", periodKey)
       .maybeSingle();
 
     return data?.count ?? 0;
   }
 
-  return memoryUsage.get(memoryKey(sessionId))?.count ?? 0;
+  return memoryUsage.get(memoryKey(bucketId, periodKey))?.count ?? 0;
 }
 
-async function incrementCount(sessionId: string): Promise<number> {
+async function incrementCount(bucketId: string, periodKey: string, userId?: string | null): Promise<number> {
   const supabase = getSupabaseAdmin();
-  const date = todayKey();
 
   if (supabase) {
-    const current = await getCount(sessionId);
+    const current = await getCount(bucketId, periodKey);
     const next = current + 1;
 
     await supabase.from("usage_limits").upsert(
       {
-        session_id: sessionId,
-        usage_date: date,
+        session_id: bucketId,
+        user_id: userId ?? null,
+        usage_date: periodKey,
         count: next,
       },
       { onConflict: "session_id,usage_date" },
@@ -49,26 +60,56 @@ async function incrementCount(sessionId: string): Promise<number> {
     return next;
   }
 
-  const key = memoryKey(sessionId);
+  const key = memoryKey(bucketId, periodKey);
   const next = (memoryUsage.get(key)?.count ?? 0) + 1;
-  memoryUsage.set(key, { date, count: next });
+  memoryUsage.set(key, { date: periodKey, count: next });
   return next;
 }
 
-export async function checkAndRecordUsage(sessionId: string): Promise<{
+export type UsageCheckResult = {
   allowed: boolean;
   used: number;
   limit: number;
-}> {
-  const limit = getFreeDailyLimit();
-  const used = await getCount(sessionId);
+  period: "day" | "month" | "unlimited";
+};
 
-  if (used >= limit) {
-    return { allowed: false, used, limit };
+export async function checkAndRecordUsage(opts: {
+  sessionId: string;
+  userId?: string | null;
+  plan?: UserPlan;
+  isAdmin?: boolean;
+}): Promise<UsageCheckResult> {
+  const { sessionId, userId, plan = "free", isAdmin } = opts;
+
+  if (isAdmin || plan === "lifetime") {
+    return { allowed: true, used: 0, limit: Infinity, period: "unlimited" };
   }
 
-  const newCount = await incrementCount(sessionId);
-  return { allowed: true, used: newCount, limit };
+  const bucketId = usageBucketId(sessionId, userId);
+
+  if (plan === "pro" && userId) {
+    const limit = getProMonthlyLimit();
+    const periodKey = monthStartKey();
+    const used = await getCount(bucketId, periodKey);
+
+    if (used >= limit) {
+      return { allowed: false, used, limit, period: "month" };
+    }
+
+    const newCount = await incrementCount(bucketId, periodKey, userId);
+    return { allowed: true, used: newCount, limit, period: "month" };
+  }
+
+  const limit = getFreeDailyLimit();
+  const periodKey = todayKey();
+  const used = await getCount(bucketId, periodKey);
+
+  if (used >= limit) {
+    return { allowed: false, used, limit, period: "day" };
+  }
+
+  const newCount = await incrementCount(bucketId, periodKey, userId);
+  return { allowed: true, used: newCount, limit, period: "day" };
 }
 
 export async function logGeneration(params: {

@@ -81,6 +81,12 @@ export function getFreeDailyLimit(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
 }
 
+export function getProMonthlyLimit(): number {
+  const raw = process.env.PRO_MONTHLY_LIMIT?.trim();
+  const parsed = raw ? Number.parseInt(raw, 10) : 50;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 50;
+}
+
 export function getAdSenseConfig() {
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim();
   if (!client) return null;
@@ -102,12 +108,29 @@ export function getCreemConfig() {
   if (!apiKey) return null;
   return {
     apiKey,
+    apiBaseUrl: getCreemApiBaseUrl(apiKey),
     webhookSecret: webhookSecret || "",
     products: {
       pro: process.env.NEXT_PUBLIC_CREEM_PRODUCT_PRO?.trim() || "",
       lifetime: process.env.NEXT_PUBLIC_CREEM_PRODUCT_LIFETIME?.trim() || "",
     },
   };
+}
+
+/**
+ * Creem API base URL. Override with CREEM_API_BASE_URL, or auto-detect from key prefix.
+ * Test keys (creem_test_*) → https://test-api.creem.io
+ * Live keys → https://api.creem.io
+ */
+export function getCreemApiBaseUrl(apiKey?: string): string {
+  const explicit = process.env.CREEM_API_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const key = apiKey ?? process.env.CREEM_API_KEY?.trim() ?? "";
+  if (key.startsWith("creem_test_")) {
+    return "https://test-api.creem.io";
+  }
+  return "https://api.creem.io";
 }
 
 export function isCreemEnabled() {
@@ -120,4 +143,44 @@ export function getCreemProductId(plan: "pro" | "lifetime"): string | null {
   if (!config) return null;
   const id = config.products[plan];
   return id || null;
+}
+
+export type SmtpConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  from: string;
+};
+
+/** 163 requires a valid mailbox in From; bare "HirePen" is rejected. */
+export function normalizeSmtpFrom(from: string, userEmail: string): string {
+  const trimmed = from.trim();
+  const email = userEmail.trim();
+  if (!trimmed) return email;
+  if (trimmed.includes("@")) return trimmed;
+  return `${trimmed} <${email}>`;
+}
+
+/** 163 / custom SMTP for password-reset emails. Server-only env vars. */
+export function getSmtpConfig(): SmtpConfig | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const fromRaw = process.env.SMTP_FROM?.trim();
+  if (!host || !user || !pass) return null;
+
+  const from = normalizeSmtpFrom(fromRaw || user, user);
+
+  const portRaw = process.env.SMTP_PORT?.trim();
+  const port = portRaw ? Number.parseInt(portRaw, 10) : 465;
+  const secure =
+    process.env.SMTP_SECURE?.trim() === "false" ? false : port === 465;
+
+  return { host, port, secure, user, pass, from };
+}
+
+export function isPasswordResetEnabled() {
+  return Boolean(isPasswordAuthEnabled() && getSmtpConfig());
 }

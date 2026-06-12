@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getSessionUser } from "@/lib/auth/session";
 import { createCreemCheckout } from "@/lib/creem";
 
 const checkoutSchema = z.object({
@@ -18,7 +19,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid plan", configured: false }, { status: 400 });
   }
 
-  const result = await createCreemCheckout(parsed.data.plan);
+  const user = await getSessionUser();
+  if (!user) {
+    return Response.json(
+      { error: "Log in before subscribing.", configured: true, requiresAuth: true },
+      { status: 401 },
+    );
+  }
+
+  const result = await createCreemCheckout(parsed.data.plan, {
+    email: user.email,
+    userId: user.id,
+  });
 
   if (!result.ok) {
     return Response.json(

@@ -1,5 +1,9 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
+import type { UserPlan } from "@/lib/plans";
+
+// plan columns added in supabase/migrations/003_user_plans.sql
+
 export type AppUser = {
   id: string;
   email: string;
@@ -7,8 +11,47 @@ export type AppUser = {
   provider: "password" | "github";
   github_id: string | null;
   is_admin: boolean;
+  plan: UserPlan;
+  plan_updated_at: string | null;
+  creem_customer_id: string | null;
   created_at: string;
 };
+
+export async function findUserById(id: string): Promise<AppUser | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("[auth] findUserById failed:", error.message, error);
+    throw new Error(`findUserById: ${error.message}`);
+  }
+  return (data as AppUser | null) ?? null;
+}
+
+export async function updatePasswordHash(
+  userId: string,
+  passwordHash: string,
+): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from("app_users")
+    .update({ password_hash: passwordHash })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[auth] updatePasswordHash failed:", error.message);
+    return false;
+  }
+
+  await supabase.from("password_reset_tokens").delete().eq("user_id", userId);
+  return true;
+}
 
 export async function findUserByEmail(email: string): Promise<AppUser | null> {
   const supabase = getSupabaseAdmin();

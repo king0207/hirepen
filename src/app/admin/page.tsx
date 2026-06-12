@@ -7,6 +7,7 @@ import {
   listGenerations,
   listPaymentEvents,
 } from "@/lib/data";
+import { planLabel } from "@/lib/plans";
 import { ButtonLink } from "@/components/button-link";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -87,6 +88,7 @@ export default async function AdminPage() {
               <tr className="border-b">
                 <th className="py-2 pr-4 font-medium">Email</th>
                 <th className="py-2 pr-4 font-medium">Method</th>
+                <th className="py-2 pr-4 font-medium">Plan</th>
                 <th className="py-2 pr-4 font-medium">Role</th>
                 <th className="py-2 font-medium">Joined</th>
               </tr>
@@ -96,6 +98,11 @@ export default async function AdminPage() {
                 <tr key={u.id} className="border-b last:border-0">
                   <td className="py-2 pr-4">{u.email}</td>
                   <td className="py-2 pr-4">{u.provider}</td>
+                  <td className="py-2 pr-4">
+                    <Badge variant={u.plan === "free" ? "secondary" : "default"}>
+                      {planLabel(u.plan ?? "free")}
+                    </Badge>
+                  </td>
                   <td className="py-2 pr-4">
                     {u.is_admin ? (
                       <Badge>admin</Badge>

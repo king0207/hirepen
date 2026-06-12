@@ -12,7 +12,10 @@ type CheckoutResponse = {
   message?: string;
 };
 
-export async function createCreemCheckout(plan: CreemPlan): Promise<{
+export async function createCreemCheckout(
+  plan: CreemPlan,
+  customer: { email: string; userId: string },
+): Promise<{
   ok: boolean;
   checkoutUrl?: string;
   error?: string;
@@ -31,7 +34,7 @@ export async function createCreemCheckout(plan: CreemPlan): Promise<{
   }
 
   const siteUrl = getSiteUrl();
-  const response = await fetch("https://api.creem.io/v1/checkouts", {
+  const response = await fetch(`${config.apiBaseUrl}/v1/checkouts`, {
     method: "POST",
     headers: {
       "x-api-key": config.apiKey,
@@ -40,7 +43,13 @@ export async function createCreemCheckout(plan: CreemPlan): Promise<{
     body: JSON.stringify({
       product_id: productId,
       success_url: `${siteUrl}/pricing?checkout=success&plan=${plan}`,
-      request_id: `plan_${plan}_${Date.now()}`,
+      request_id: `plan_${plan}_${customer.userId}_${Date.now()}`,
+      customer: { email: customer.email },
+      metadata: {
+        user_id: customer.userId,
+        plan,
+        email: customer.email,
+      },
     }),
   });
 

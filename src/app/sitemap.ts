@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
   const now = new Date();
 
-  // Note: /login and /account are intentionally excluded (noindex auth pages).
+  // Auth pages (/login, /account, /forgot-password, /reset-password) excluded — noindex.
   const staticPages = ["", "/pricing", "/privacy", "/terms"].map((path) => ({
     url: `${base}${path}`,
     lastModified: now,

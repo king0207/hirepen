@@ -17,8 +17,8 @@ ATS-friendly draft streamed back in real time.
   Alibaba Qwen (US region), OpenAI, OpenRouter, Groq, DeepSeek, etc. Switch with
   env vars only.
 - **Self-managed auth** — email + password (scrypt-hashed) with an SVG captcha,
-  plus GitHub OAuth via Supabase. Sessions are signed JWTs in HTTP-only cookies
-  (`jose`); end users never hold a Supabase token.
+  optional **forgot password** via 163 SMTP, plus GitHub OAuth via Supabase.
+  Sessions are signed JWTs in HTTP-only cookies (`jose`).
 - **Roles** — admins get an `/admin` dashboard (all users / generations / payments)
   and are exempt from the daily generation limit. Regular users see only their own
   generation history on `/account`.
@@ -76,6 +76,7 @@ cp env.example .env.local
 # 3. Create the database schema
 #   Supabase dashboard -> SQL Editor -> paste & run
 #   supabase/migrations/001_initial.sql
+#   supabase/migrations/002_password_reset.sql  (forgot-password emails)
 
 # 4. Run
 npm run dev            # http://localhost:3000
@@ -96,7 +97,8 @@ See `env.example` for the full list. Essentials:
 | `AI_API_KEY` / `AI_BASE_URL` / `AI_MODEL` | yes | AI provider (OpenAI-compatible)       |
 | `AUTH_SESSION_SECRET`             | yes      | Signs session + captcha cookies           |
 | `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | yes | Users, GitHub OAuth, rate limits |
-| `CREEM_*` / `NEXT_PUBLIC_CREEM_*` | no       | Payments (hidden if unset)                |
+| `CREEM_API_KEY` / product IDs     | no       | Creem checkout (`CREEM_API_BASE_URL` optional; auto from key prefix) |
+| `SMTP_*`                          | no       | 163 SMTP — enables forgot-password emails |
 | `NEXT_PUBLIC_ADSENSE_*`           | no       | Ads (not rendered if unset)               |
 | `HTTPS_PROXY`                     | no       | Local dev only — route Node fetch via a proxy |
 | `FREE_DAILY_LIMIT`                | no       | Daily free generations (default 3)        |

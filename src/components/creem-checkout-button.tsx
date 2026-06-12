@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { CreemPlan } from "@/lib/creem";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function CreemCheckoutButton({
   label,
   variant = "default",
 }: CreemCheckoutButtonProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleCheckout() {
@@ -32,9 +34,17 @@ export function CreemCheckoutButton({
         checkoutUrl?: string;
         error?: string;
         configured?: boolean;
+        requiresAuth?: boolean;
       };
 
       if (!response.ok) {
+        if (response.status === 401 || data.requiresAuth) {
+          toast.message("Log in to subscribe", {
+            description: "Your plan is linked to your account after payment.",
+          });
+          router.push("/login?redirect=/pricing");
+          return;
+        }
         toast.error(data.error || "Checkout unavailable.");
         return;
       }

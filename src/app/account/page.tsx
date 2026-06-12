@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { listGenerations } from "@/lib/data";
+import { getPlanLimits, getUserPlan, planLabel } from "@/lib/plans";
+import { isPasswordResetEnabled } from "@/lib/env";
+import { Badge } from "@/components/ui/badge";
+import { ChangePasswordCard } from "@/components/auth/change-password-card";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ButtonLink } from "@/components/button-link";
 import {
@@ -26,7 +30,17 @@ export default async function AccountPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login?redirect=/account");
 
-  const history = await listGenerations({ userId: user.id, limit: 20 });
+  const [history, plan] = await Promise.all([
+    listGenerations({ userId: user.id, limit: 20 }),
+    getUserPlan(user.id),
+  ]);
+  const limits = getPlanLimits();
+  const planDetail =
+    plan === "pro"
+      ? `${limits.monthly} generations per month, no ads`
+      : plan === "lifetime"
+        ? "Unlimited generations, no ads"
+        : `${limits.daily} generations per day (free tier)`;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -44,6 +58,13 @@ export default async function AccountPage() {
             <p>
               <span className="text-muted-foreground">Sign-in method: </span>
               {user.provider === "github" ? "GitHub" : "Email & password"}
+            </p>
+            <p className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">Plan: </span>
+              <Badge variant={plan === "free" ? "secondary" : "default"}>
+                {planLabel(plan)}
+              </Badge>
+              <span className="text-muted-foreground">{planDetail}</span>
             </p>
             {user.isAdmin && (
               <p>
@@ -67,6 +88,12 @@ export default async function AccountPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ChangePasswordCard
+        email={user.email}
+        provider={user.provider}
+        passwordResetEnabled={isPasswordResetEnabled()}
+      />
 
       <Card className="mt-6">
         <CardHeader>
