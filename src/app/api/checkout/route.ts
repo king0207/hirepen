@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { createCreemCheckout } from "@/lib/creem";
+import { getCheckoutBlockReason, getUserPlan } from "@/lib/plans";
 
 const checkoutSchema = z.object({
   plan: z.enum(["pro", "lifetime"]),
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "Log in before subscribing.", configured: true, requiresAuth: true },
       { status: 401 },
+    );
+  }
+
+  const currentPlan = await getUserPlan(user.id);
+  const blockReason = getCheckoutBlockReason(currentPlan, parsed.data.plan);
+  if (blockReason) {
+    return Response.json(
+      { error: blockReason, configured: true, currentPlan },
+      { status: 409 },
     );
   }
 

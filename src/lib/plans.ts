@@ -4,6 +4,38 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export type UserPlan = "free" | "pro" | "lifetime";
 
+const PLAN_RANK: Record<UserPlan, number> = {
+  free: 0,
+  pro: 1,
+  lifetime: 2,
+};
+
+export function planRank(plan: UserPlan): number {
+  return PLAN_RANK[plan];
+}
+
+/** Block checkout that would duplicate or downgrade the user's entitlements. */
+export function getCheckoutBlockReason(
+  currentPlan: UserPlan,
+  targetPlan: "pro" | "lifetime",
+): string | null {
+  if (targetPlan === "pro") {
+    if (currentPlan === "lifetime") {
+      return "Lifetime already includes everything in Pro. Monthly Pro is not available.";
+    }
+    if (currentPlan === "pro") {
+      return "You are already on Pro.";
+    }
+    return null;
+  }
+
+  if (currentPlan === "lifetime") {
+    return "You already have Lifetime access.";
+  }
+
+  return null;
+}
+
 export function shouldShowAds(plan: UserPlan): boolean {
   return plan === "free";
 }
@@ -187,9 +219,40 @@ export async function applyPlanFromCreemProduct(ctx: CreemCheckoutContext): Prom
     console.warn("[plans] unknown Creem product:", ctx.productId);
     return false;
   }
+
+  let userId = ctx.userId?.trim() || null;
+  const email = ctx.email?.trim().toLowerCase() || null;
+  if (!userId && email) {
+    const user = await findUserByEmail(email);
+    userId = user?.id ?? null;
+  }
+  if (!userId) {
+    console.warn("[plans] applyPlanFromCreemProduct: no matching user", { email, plan });
+    return false;
+  }
+
+  const currentPlan = await getUserPlan(userId);
+  if (planRank(plan) < planRank(currentPlan)) {
+    console.info("[plans] ignoring webhook plan downgrade", {
+      userId,
+      currentPlan,
+      incomingPlan: plan,
+    });
+    return true;
+  }
+
+  if (plan === currentPlan) {
+    return setUserPlan({
+      userId,
+      email,
+      plan,
+      creemCustomerId: ctx.creemCustomerId,
+    });
+  }
+
   return setUserPlan({
-    userId: ctx.userId,
-    email: ctx.email,
+    userId,
+    email,
     plan,
     creemCustomerId: ctx.creemCustomerId,
   });

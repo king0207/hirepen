@@ -70,7 +70,7 @@ export function PricingTable({ currentPlan = null }: PricingTableProps) {
               Current plan
             </Button>
           ) : currentPlan === "lifetime" ? (
-            <Button disabled variant="outline" className="w-full">
+            <Button disabled className="w-full" title="Lifetime includes all Pro features">
               Included in Lifetime
             </Button>
           ) : creemEnabled && proConfigured ? (
