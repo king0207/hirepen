@@ -5,6 +5,7 @@ import {
   getFreeDailyLimit,
   isCreemEnabled,
 } from "@/lib/env";
+import type { UserPlan } from "@/lib/plans";
 import { CreemCheckoutButton } from "@/components/creem-checkout-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export function PricingTable() {
+type PricingTableProps = {
+  currentPlan?: UserPlan | null;
+};
+
+export function PricingTable({ currentPlan = null }: PricingTableProps) {
   const freeLimit = getFreeDailyLimit();
   const creemEnabled = isCreemEnabled();
   const proConfigured = Boolean(getCreemProductId("pro"));
@@ -60,7 +65,15 @@ export function PricingTable() {
           <p>Email support</p>
         </CardContent>
         <CardFooter>
-          {creemEnabled && proConfigured ? (
+          {currentPlan === "pro" ? (
+            <Button disabled className="w-full">
+              Current plan
+            </Button>
+          ) : currentPlan === "lifetime" ? (
+            <Button disabled variant="outline" className="w-full">
+              Included in Lifetime
+            </Button>
+          ) : creemEnabled && proConfigured ? (
             <CreemCheckoutButton plan="pro" label="Subscribe with Creem" />
           ) : (
             <Button disabled className="w-full" title="Configure CREEM_API_KEY and NEXT_PUBLIC_CREEM_PRODUCT_PRO">
@@ -83,7 +96,11 @@ export function PricingTable() {
           <p>Best for heavy job search seasons</p>
         </CardContent>
         <CardFooter>
-          {creemEnabled && lifetimeConfigured ? (
+          {currentPlan === "lifetime" ? (
+            <Button disabled variant="outline" className="w-full">
+              Current plan
+            </Button>
+          ) : creemEnabled && lifetimeConfigured ? (
             <CreemCheckoutButton
               plan="lifetime"
               label="Buy lifetime access"

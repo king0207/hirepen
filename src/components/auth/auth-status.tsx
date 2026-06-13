@@ -5,9 +5,16 @@ import { usePathname } from "next/navigation";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth/client-events";
 import { ButtonLink } from "@/components/button-link";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { Badge } from "@/components/ui/badge";
 
-type MeUser = { email: string; isAdmin: boolean };
+type MeUser = { email: string; isAdmin: boolean; plan?: string };
 type MeResponse = { user: MeUser | null };
+
+function planBadgeLabel(plan: string): string {
+  if (plan === "pro") return "Pro";
+  if (plan === "lifetime") return "Lifetime";
+  return "Free";
+}
 
 export function AuthStatus() {
   const pathname = usePathname();
@@ -42,6 +49,11 @@ export function AuthStatus() {
 
   return (
     <div className="flex items-center gap-1">
+      {user.plan && user.plan !== "free" && (
+        <Badge variant="secondary" className="hidden sm:inline-flex">
+          {planBadgeLabel(user.plan)}
+        </Badge>
+      )}
       {user.isAdmin && (
         <ButtonLink href="/admin" variant="ghost" size="sm">
           Admin

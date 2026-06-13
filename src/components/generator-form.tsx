@@ -49,7 +49,13 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
 
     refreshAds();
     window.addEventListener(AUTH_CHANGED_EVENT, refreshAds);
-    return () => window.removeEventListener(AUTH_CHANGED_EVENT, refreshAds);
+    window.addEventListener("focus", refreshAds);
+    document.addEventListener("visibilitychange", refreshAds);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, refreshAds);
+      window.removeEventListener("focus", refreshAds);
+      document.removeEventListener("visibilitychange", refreshAds);
+    };
   }, []);
 
   async function handleGenerate() {

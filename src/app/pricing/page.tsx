@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { getSessionUser } from "@/lib/auth/session";
+import { getUserPlan, planLabel } from "@/lib/plans";
 import { getCreemStatusNote, PricingTable } from "@/components/pricing-table";
+import { Badge } from "@/components/ui/badge";
+import { CheckoutSuccessRefresh } from "@/components/checkout-success-refresh";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pricing — Pro & Lifetime Plans",
@@ -14,9 +21,13 @@ export default async function PricingPage({
 }) {
   const params = await searchParams;
   const creemNote = getCreemStatusNote();
+  const user = await getSessionUser();
+  const currentPlan = user ? await getUserPlan(user.id) : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
+      {params.checkout === "success" && <CheckoutSuccessRefresh />}
+
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight">Simple pricing</h1>
         <p className="mt-3 text-muted-foreground">
@@ -24,9 +35,26 @@ export default async function PricingPage({
         </p>
       </div>
 
+      {user && currentPlan && (
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Your current plan:</span>
+          <Badge variant={currentPlan === "free" ? "secondary" : "default"}>
+            {planLabel(currentPlan)}
+          </Badge>
+          <Link href="/account" className="text-primary underline-offset-4 hover:underline">
+            Account details
+          </Link>
+        </div>
+      )}
+
       {params.checkout === "success" && (
         <div className="mt-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
-          Payment received{params.plan ? ` for ${params.plan}` : ""}. Access updates automatically via Creem webhook.
+          Payment received{params.plan ? ` for ${params.plan}` : ""}.
+          {currentPlan && currentPlan !== "free" ? (
+            <> Your account is now on <strong>{planLabel(currentPlan)}</strong>.</>
+          ) : (
+            <> Plan access updates within a minute — refresh this page or open Account.</>
+          )}
         </div>
       )}
 
@@ -37,7 +65,7 @@ export default async function PricingPage({
       )}
 
       <div className="mt-10">
-        <PricingTable />
+        <PricingTable currentPlan={currentPlan} />
       </div>
     </div>
   );
