@@ -315,6 +315,10 @@ SMTP_FROM=HirePen <you@163.com>
 NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-...
 NEXT_PUBLIC_ADSENSE_SLOT_TOP=...
 NEXT_PUBLIC_ADSENSE_SLOT_BOTTOM=...
+
+# Analytics — omit to disable (see docs/SEO.md §6)
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_CLARITY_PROJECT_ID=your_clarity_project_id
 ```
 
 > ⚠️ 改了任何 `NEXT_PUBLIC_*` 后必须 **Redeploy**。  
@@ -324,25 +328,28 @@ NEXT_PUBLIC_ADSENSE_SLOT_BOTTOM=...
 
 ## 7. SEO 与 Google 收录
 
+> **完整实操手册（阶段规划、GSC 操作、外链、分析工具）见 [SEO.md](./SEO.md)。**
+
 ### 7.1 已内置的 SEO 能力
 
 - **20 个职业落地页**（SSG 静态生成）：`/nurse`、`/warehouse`、`/server`… 每个 targeting 不同长尾词
-- 自动生成 `https://hirepen.net/sitemap.xml`
-- `robots.txt` 排除 `/login`、`/account`、`/admin`
-- `/privacy`、`/terms` 隐私与条款页
+- 自动生成 `https://www.hirepen.net/sitemap.xml`（由 `NEXT_PUBLIC_SITE_URL` 决定域名）
+- `robots.txt` 声明 sitemap；登录/账户等页 `noindex`
+- `/privacy`、`/terms` 隐私与条款页；页脚 `NEXT_PUBLIC_SUPPORT_EMAIL`
 
 ### 7.2 Google Search Console（上线后立即做）
 
-1. https://search.google.com/search-console → 添加资源 `https://hirepen.net`
+1. https://search.google.com/search-console → 添加资源 `https://www.hirepen.net`
 2. 验证所有权（DNS TXT 记录或 HTML 文件，按 Google 提示）
-3. **Sitemaps** → 提交 `https://hirepen.net/sitemap.xml`
+3. **Sitemaps** → 提交 `sitemap.xml`
 4. 等 Google 抓取（几天到几周），在「效果」里看哪些词有曝光
 
 ### 7.3 持续 SEO（长期）
 
 - 在 `src/config/professions.ts` 加新职业 → 自动多一个 SEO 入口
 - 丰富每个职业的 intro / FAQ 内容
-- 定期看 Search Console 数据，优化标题和描述
+- 定期看 Search Console 数据，优化标题和描述  
+- 详见 [SEO.md](./SEO.md) 阶段 1～3 与每周 checklist
 
 ---
 

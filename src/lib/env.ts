@@ -102,6 +102,27 @@ export function isAdSenseEnabled() {
   return Boolean(config?.client);
 }
 
+/** GA4 measurement ID (G-XXXXXXXX). Omit to disable analytics. */
+export function getGa4MeasurementId(): string | null {
+  const id = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  if (!id || !id.startsWith("G-")) return null;
+  return id;
+}
+
+export function isGa4Enabled() {
+  return Boolean(getGa4MeasurementId());
+}
+
+/** Microsoft Clarity project ID. Omit to disable Clarity. */
+export function getClarityProjectId(): string | null {
+  const id = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim();
+  return id || null;
+}
+
+export function isClarityEnabled() {
+  return Boolean(getClarityProjectId());
+}
+
 export function getCreemConfig() {
   const apiKey = process.env.CREEM_API_KEY?.trim();
   const webhookSecret = process.env.CREEM_WEBHOOK_SECRET?.trim();

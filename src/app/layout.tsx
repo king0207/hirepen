@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { AdSenseScript } from "@/components/adsense-script";
+import { AnalyticsScripts } from "@/components/analytics-scripts";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { SITE_NAME, getSiteUrl } from "@/config/site";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <AdSenseScript />
+        <AnalyticsScripts />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />

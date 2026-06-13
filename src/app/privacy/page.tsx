@@ -30,14 +30,17 @@ export default function PrivacyPage() {
       </p>
       <h2>Cookies & advertising</h2>
       <p>
-        We use cookies for session management. When configured, Google AdSense may use cookies to
-        serve ads. See Google&apos;s policies for how ad partners use data.
+        We use cookies for session management. When configured, Google Analytics and Microsoft
+        Clarity help us understand site usage. Google AdSense may use cookies to serve ads on the
+        free tier. See Google&apos;s and Microsoft&apos;s policies for how those partners use data.
       </p>
       <h2>Third-party services</h2>
       <ul>
         <li>AI provider — text generation (OpenAI-compatible API)</li>
         <li>Supabase — database and analytics storage</li>
         <li>Creem — payment processing</li>
+        <li>Google Analytics — traffic and usage statistics (when enabled)</li>
+        <li>Microsoft Clarity — session recordings and heatmaps (when enabled)</li>
         <li>Google AdSense — advertising (free tier)</li>
       </ul>
       <h2>Contact</h2>
