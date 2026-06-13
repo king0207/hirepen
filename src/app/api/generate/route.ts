@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getProfessionBySlug } from "@/config/professions";
 import { streamChat } from "@/lib/ai";
-import { buildMessages } from "@/lib/prompts";
+import { buildMessages, getGenerationParams } from "@/lib/prompts";
 import { checkAndRecordUsage, logGeneration } from "@/lib/rate-limit";
 import { getUserPlan } from "@/lib/plans";
 import { ensureSessionId } from "@/lib/session";
@@ -79,9 +79,15 @@ export async function POST(request: NextRequest) {
     experience: parsed.data.experience,
     skills: parsed.data.skills,
     tone: parsed.data.tone,
+    plan,
   });
 
-  const response = await streamChat(messages);
+  const genParams = getGenerationParams({ docType: parsed.data.docType, plan });
+  const response = await streamChat(messages, {
+    plan,
+    temperature: genParams.temperature,
+    maxTokens: genParams.maxTokens,
+  });
 
   if (response.ok) {
     await logGeneration({

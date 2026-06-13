@@ -1,8 +1,9 @@
 /**
  * Provider-agnostic AI config. Works with any OpenAI-compatible API:
- * OpenAI, OpenRouter, Groq, Together, Azure OpenAI, DeepSeek, etc.
+ * OpenAI, OpenRouter, Groq, Together, Azure OpenAI, DeepSeek, Qwen US, etc.
  *
  * Preferred env: AI_API_KEY / AI_BASE_URL / AI_MODEL.
+ * Optional: AI_MODEL_PAID for Pro/Lifetime (defaults to AI_MODEL if unset).
  * Legacy fallback: DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / DEEPSEEK_MODEL.
  */
 export function getAIConfig() {
@@ -25,12 +26,24 @@ export function getAIConfig() {
     process.env.DEEPSEEK_MODEL?.trim() ||
     (usingLegacyDeepSeek ? "deepseek-chat" : "gpt-4o-mini");
 
+  const paidModel =
+    process.env.AI_MODEL_PAID?.trim() || model;
+
   return {
     apiKey,
     model,
+    paidModel,
     baseUrl: baseUrl.replace(/\/$/, ""),
     provider: process.env.AI_PROVIDER?.trim() || (usingLegacyDeepSeek ? "deepseek" : "openai"),
   };
+}
+
+/** Free tier uses AI_MODEL; Pro/Lifetime use AI_MODEL_PAID when set. */
+export function resolveAIModel(plan: "free" | "pro" | "lifetime" | undefined): string | undefined {
+  const config = getAIConfig();
+  if (!config) return undefined;
+  if (plan === "pro" || plan === "lifetime") return config.paidModel;
+  return config.model;
 }
 
 export function getSupabaseConfig() {

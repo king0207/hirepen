@@ -94,12 +94,13 @@ AI 层 **OpenAI 兼容**，换 provider 只改环境变量，不改代码。
 AI_API_KEY=sk-你的美区key
 AI_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
 AI_MODEL=qwen-flash-us
+AI_MODEL_PAID=qwen-plus-us
 ```
 
 | 模型 | 说明 |
 |------|------|
-| `qwen-flash-us` | 最便宜、最快，**推荐起步** |
-| `qwen-plus-us` | 质量更高 |
+| `qwen-flash-us` | 免费档默认，最便宜、最快 |
+| `qwen-plus-us` | **Pro / Lifetime 自动使用**（`AI_MODEL_PAID`），美式求职文案质量更好 |
 
 ### 备选
 
@@ -287,6 +288,7 @@ NEXT_PUBLIC_SUPPORT_EMAIL=wukaiwei@hirepen.net   # 页脚/Privacy/Terms；Creem 
 AI_API_KEY=sk-...
 AI_BASE_URL=https://dashscope-us.aliyuncs.com/compatible-mode/v1
 AI_MODEL=qwen-flash-us
+AI_MODEL_PAID=qwen-plus-us
 
 AUTH_SESSION_SECRET=...          # openssl rand -base64 32
 

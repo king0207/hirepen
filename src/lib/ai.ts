@@ -1,15 +1,25 @@
-import { getAIConfig } from "@/lib/env";
+import { getAIConfig, resolveAIModel } from "@/lib/env";
+import type { UserPlan } from "@/lib/plans";
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
 
+export type StreamChatOptions = {
+  plan?: UserPlan;
+  temperature?: number;
+  maxTokens?: number;
+};
+
 /**
  * Streams a chat completion from any OpenAI-compatible provider.
  * Returns a plain-text ReadableStream Response (token deltas).
  */
-export async function streamChat(messages: ChatMessage[]): Promise<Response> {
+export async function streamChat(
+  messages: ChatMessage[],
+  options: StreamChatOptions = {},
+): Promise<Response> {
   const config = getAIConfig();
   if (!config) {
     return new Response(
@@ -20,6 +30,10 @@ export async function streamChat(messages: ChatMessage[]): Promise<Response> {
     );
   }
 
+  const model = resolveAIModel(options.plan) ?? config.model;
+  const temperature = options.temperature ?? 0.55;
+  const maxTokens = options.maxTokens ?? 1600;
+
   let upstream: Response;
   try {
     upstream = await fetch(`${config.baseUrl}/chat/completions`, {
@@ -29,10 +43,11 @@ export async function streamChat(messages: ChatMessage[]): Promise<Response> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: config.model,
+        model,
         messages,
         stream: true,
-        temperature: 0.7,
+        temperature,
+        max_tokens: maxTokens,
       }),
     });
   } catch {
