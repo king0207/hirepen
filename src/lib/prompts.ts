@@ -18,30 +18,44 @@ const US_FORMAT_RULES = `US MARKET FORMAT (mandatory):
 - Dates: "Month YYYY" for employment; cover letters use "Month DD, YYYY" at top when dated.
 - Plain text only — no markdown, no code fences, no **bold**, no bullet symbols other than "- " or "• ".
 - Do NOT include: photo, age, date of birth, marital status, religion, or Social Security number.
-- Resume contact line: name, phone, email, city and state only (no full street address unless user provided one).`;
+- Resume header: applicant name only, unless phone/email/city/state appear verbatim in the user's input fields below — never invent contact details.
+- Cover letter sign-off: "Sincerely," then the applicant name only — no phone, email, city, or state line unless the user explicitly provided them in Experience, Skills, or Target role text.`;
 
 const ACCURACY_RULES = `ACCURACY (non-negotiable):
-- Never invent employers, schools, job titles, dates, licenses, certifications, awards, or metrics.
+- Never invent employers, schools, job titles, dates, licenses, certifications, awards, phone numbers, emails, cities, states, or metrics.
 - Do not add percentages, dollar amounts, or headcount unless the user explicitly provided them.
 - If a credential is commonly required but missing, use a bracket placeholder like [BLS Certification] — do not claim the user has it.
-- Expand only on facts the user gave; do not infer unrelated experience.`;
+- Expand only on facts the user gave; do not infer unrelated experience.
+- Do not add placeholder contact info such as (555) 123-4567 or example@email.com.`;
 
 const ATS_RULES = `ATS & KEYWORDS:
 - Use standard section headings that applicant tracking systems parse easily.
 - Weave industry terms naturally into bullets and summary — never keyword-stuff.
 - Start experience bullets with strong past-tense action verbs (Managed, Assisted, Documented, Operated).`;
 
-const COVER_LETTER_AVOID = `Avoid these overused openings/closings:
-- "I am writing to express my interest..."
-- "I believe I would be a great fit..."
-- "To whom it may concern" (use "Dear Hiring Manager," instead)
-- Generic filler with no tie to the target role.`;
+const COVER_LETTER_OPENING = `COVER LETTER OPENING (strict):
+- The first sentence after "Dear Hiring Manager," must name the target role and one concrete detail from the user's experience (employer, hours, unit, certification, or skill).
+- NEVER open with or include these phrases anywhere in the letter:
+  "I am writing to express"
+  "I am excited to apply"
+  "strong interest"
+  "great fit"
+  "perfect candidate"
+  "To whom it may concern"
+- Prefer direct openings, e.g. "As a recent nursing graduate with 120 hours of Med-Surg clinical experience at City Hospital, I am ready to contribute to your New Grad RN team."`;
+
+const COVER_LETTER_AVOID = `Also avoid hollow filler unless tied to user facts:
+- "evidence-based practices", "interdisciplinary teams", "dedication to excellence", "passion for healthcare"
+- Generic praise of the employer with no link to the applicant's background.`;
 
 function premiumQualityNote(plan: UserPlan | undefined): string {
   if (plan === "pro" || plan === "lifetime") {
-    return `QUALITY TIER: Premium. Be specific, polished, and interview-ready. Every sentence must reflect the user's input or neutral placeholders — no generic template filler.`;
+    return `QUALITY TIER: Premium (paid). Write like a strong US job applicant — specific, natural, interview-ready.
+- Every paragraph must cite at least one fact from the user's input.
+- No template language, no AI-sounding abstractions, no invented contact lines.
+- Opening hook + concrete clinical/work examples in the body; confident but not boastful close.`;
   }
-  return "";
+  return `QUALITY TIER: Standard. Follow all rules above; keep language clear and factual.`;
 }
 
 function buildSystemPrompt(
@@ -63,8 +77,9 @@ function buildSystemPrompt(
 - Skills: scannable list grouped by category if helpful (Clinical, Technical, Soft Skills).`
       : `COVER LETTER RULES:
 - Length: 250–350 words, 3–4 short paragraphs, fits one page.
-- Structure: date line → "Dear Hiring Manager," → opening hook naming the role → body (2 paragraphs mapping user experience to role) → closing with confident call to action → "Sincerely," + applicant name.
+- Structure: date line → "Dear Hiring Manager," → opening hook → body (2 paragraphs) → closing → "Sincerely," + applicant name only (no contact block unless user provided phone/email/location in their input).
 - Reference the exact target role and 2–3 concrete strengths from the user's background.
+- ${COVER_LETTER_OPENING}
 - ${COVER_LETTER_AVOID}`;
 
   return `You are an expert US job application writer specializing in ${profession.jobTitle} roles (${profession.name} sector).
@@ -97,7 +112,7 @@ function buildUserPrompt(input: PromptInput): string {
 
   return `Generate a ${docLabel} for this US job application.
 
-Applicant name: ${input.name}
+Applicant name (use exactly for sign-off / resume header): ${input.name}
 Target role / job title: ${input.targetRole}
 Profession page context: ${input.profession.intro.slice(0, 280)}
 
@@ -106,6 +121,8 @@ ${input.experience.trim() || "Not provided — emphasize transferable skills onl
 
 Skills (use as provided — do not add skills not listed or clearly implied by experience):
 ${input.skills.trim() || "Not provided — derive skill bullets only from the experience section above."}
+
+Contact rule: The user did NOT provide a separate phone, email, or address field. Include phone/email/city/state ONLY if they appear verbatim above in Experience, Skills, or Target role. Otherwise end the cover letter with "Sincerely," and the applicant name only.
 
 ${toneNote}
 
@@ -118,7 +135,7 @@ export function getGenerationParams(opts: {
   plan?: UserPlan;
 }): { temperature: number; maxTokens: number } {
   const isPaid = opts.plan === "pro" || opts.plan === "lifetime";
-  const temperature = isPaid ? 0.5 : 0.55;
+  const temperature = isPaid ? 0.45 : 0.55;
   const maxTokens =
     opts.docType === "cover_letter" ? (isPaid ? 950 : 850) : isPaid ? 2000 : 1600;
   return { temperature, maxTokens };
