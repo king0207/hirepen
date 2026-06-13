@@ -102,29 +102,81 @@ export type CreemCheckoutContext = {
   creemCustomerId: string | null;
 };
 
-/** Extract user/product info from Creem webhook `data` payloads. */
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readProductId(data: Record<string, unknown>, metadata: Record<string, unknown>): string | null {
+  const product = data.product;
+  const order = readRecord(data.order);
+
+  const fromProduct =
+    typeof product === "string"
+      ? product
+      : readRecord(product).id ?? data.product_id ?? data.productId;
+
+  const raw =
+    metadata.product_id ??
+    fromProduct ??
+    order.product ??
+    readRecord(data.subscription).product;
+
+  const subscriptionProduct = readRecord(data.subscription).product;
+  const fromSubscription =
+    typeof subscriptionProduct === "string"
+      ? subscriptionProduct
+      : readRecord(subscriptionProduct).id;
+
+  const resolved = raw ?? fromSubscription;
+  return resolved ? String(resolved).trim() : null;
+}
+
+/** Extract user/product info from Creem webhook `object` (or legacy `data`) payloads. */
 export function parseCreemEventData(data: Record<string, unknown> | undefined): CreemCheckoutContext {
   if (!data) {
     return { email: null, userId: null, productId: null, creemCustomerId: null };
   }
 
-  const metadata = (data.metadata ?? {}) as Record<string, unknown>;
-  const customer = (data.customer ?? {}) as Record<string, unknown>;
+  const metadata = {
+    ...readRecord(readRecord(data.subscription).metadata),
+    ...readRecord(data.metadata),
+  };
+  const customer = data.customer;
+  const customerObj = readRecord(customer);
 
   const emailRaw =
     metadata.email ??
-    customer.email ??
+    customerObj.email ??
     data.customer_email ??
     data.email;
   const userIdRaw = metadata.user_id ?? metadata.userId ?? metadata.userID;
-  const productIdRaw = data.product_id ?? data.productId;
-  const customerIdRaw = data.customer_id ?? data.customerId ?? customer.id;
+  const productIdRaw = readProductId(data, metadata);
+  const customerIdRaw =
+    (typeof customer === "string" ? customer : null) ??
+    customerObj.id ??
+    data.customer_id ??
+    data.customerId;
 
   return {
     email: emailRaw ? String(emailRaw).trim().toLowerCase() : null,
     userId: userIdRaw ? String(userIdRaw).trim() : null,
-    productId: productIdRaw ? String(productIdRaw).trim() : null,
+    productId: productIdRaw,
     creemCustomerId: customerIdRaw ? String(customerIdRaw).trim() : null,
+  };
+}
+
+/** Normalize Creem webhook envelope (`eventType` + `object`) and legacy shapes. */
+export function parseCreemWebhookEvent(raw: Record<string, unknown>): {
+  eventType: string;
+  payload: Record<string, unknown> | undefined;
+} {
+  const eventType = String(raw.eventType ?? raw.type ?? "unknown").trim();
+  const payload = readRecord(raw.object ?? raw.data);
+  return {
+    eventType,
+    payload: Object.keys(payload).length > 0 ? payload : undefined,
   };
 }
 

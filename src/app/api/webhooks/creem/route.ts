@@ -4,6 +4,7 @@ import {
   applyPlanFromCreemProduct,
   downgradeProUser,
   parseCreemEventData,
+  parseCreemWebhookEvent,
 } from "@/lib/plans";
 
 export async function POST(request: Request) {
@@ -14,28 +15,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: {
-    type?: string;
-    data?: Record<string, unknown>;
-  };
+  let raw: Record<string, unknown>;
 
   try {
-    event = JSON.parse(body) as typeof event;
+    raw = JSON.parse(body) as Record<string, unknown>;
   } catch {
     return Response.json({ error: "Invalid payload" }, { status: 400 });
   }
 
+  const { eventType, payload } = parseCreemWebhookEvent(raw);
+
   const supabase = getSupabaseAdmin();
   if (supabase) {
     await supabase.from("payment_events").insert({
-      event_type: event.type ?? "unknown",
-      payload: event,
+      event_type: eventType,
+      payload: raw,
     });
   }
 
-  const ctx = parseCreemEventData(event.data);
+  const ctx = parseCreemEventData(payload);
 
-  switch (event.type) {
+  switch (eventType) {
     case "checkout.completed":
       await applyPlanFromCreemProduct(ctx);
       break;
