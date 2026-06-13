@@ -15,7 +15,7 @@ type PromptInput = {
 
 const US_FORMAT_RULES = `US MARKET FORMAT (mandatory):
 - American English spelling only (organize, center, labor, license).
-- Employment dates on resumes: "Month YYYY" (e.g. January 2024 – May 2024).
+- Employment dates on resumes: use "Month YYYY" ranges ONLY when the user provided those months/years; otherwise use role labels like "Clinical Rotation, 120 hours" without dates.
 - Cover letter date line: use the "Today's date" given in the user message exactly (Month DD, YYYY).
 - Plain text only — no markdown, no code fences, no **bold**, no bullet symbols other than "- " or "• ".
 - Do NOT include: photo, age, date of birth, marital status, religion, or Social Security number.
@@ -23,11 +23,19 @@ const US_FORMAT_RULES = `US MARKET FORMAT (mandatory):
 - Cover letter sign-off: "Sincerely," then the applicant name only — no phone, email, city, or state line unless the user explicitly provided them in Experience, Skills, or Target role text.`;
 
 const ACCURACY_RULES = `ACCURACY (non-negotiable):
-- Never invent employers, schools, job titles, dates, licenses, certifications, awards, phone numbers, emails, cities, states, or metrics.
+- Never invent employers, schools, degrees, job titles, employment dates, licenses, certifications, awards, phone numbers, emails, cities, states, or metrics.
 - Do not add percentages, dollar amounts, or headcount unless the user explicitly provided them.
-- If a credential is commonly required but missing, use a bracket placeholder like [BLS Certification] — do not claim the user has it.
+- If the user stated a certification (e.g. "BLS certified"), you may list "BLS Certified" — do not add issuing body, expiry, or "Valid through" dates unless the user provided them.
+- Do not use bracket placeholders like [Institution Name] on resumes — omit the entire Education section instead.
 - Expand only on facts the user gave; do not infer unrelated experience.
 - Do not add placeholder contact info such as (555) 123-4567 or example@email.com.`;
+
+const RESUME_ACCURACY = `RESUME-SPECIFIC ACCURACY:
+- Output a RESUME only — never include "Dear Hiring Manager", cover letter paragraphs, or a letter date.
+- Omit the Education section entirely unless the user named a school, degree, program, or graduation timing.
+- Do not invent Month YYYY – Month YYYY ranges for clinical rotations or jobs unless those months/years appear in the user's input.
+- For clinical rotations: use the employer/facility name from input; include hours/unit if given (e.g. "120 hours, Med-Surg unit") instead of fake dates.
+- Certifications subsection: only credentials explicitly mentioned by the user (e.g. "BLS Certified").`;
 
 const ATS_RULES = `ATS & KEYWORDS:
 - Use standard section headings that applicant tracking systems parse easily.
@@ -80,13 +88,16 @@ function buildSystemPrompt(
 
   const docRules =
     docType === "resume"
-      ? `RESUME RULES (not a cover letter — no "Dear Hiring Manager", no paragraphs of prose):
+      ? `RESUME RULES (not a cover letter — no "Dear Hiring Manager", no letter date, no prose paragraphs):
 - Target length: one US page (~350–550 words for entry-level / skilled trades / healthcare support roles).
-- Sections (in order): name header, Professional Summary (2–3 lines), Experience, Skills, Education & Certifications (only if user provided education/certs).
-- Experience: use clear role/employer labels; bullet list with "- " prefixes; reverse chronological when multiple roles exist.
+- Sections (in order): name header, Professional Summary (2–3 lines), Experience, Skills, Certifications (only if user mentioned certs — e.g. BLS Certified).
+- Include Education ONLY if the user provided school/degree/graduation details — otherwise skip Education completely.
+- Experience: use clear role/employer labels; bullet list with "- " prefixes.
 - 3–5 bullets per role when user gave enough detail; fewer if input is brief.
 - Bullets: action verb + what they did + context from user input — no essay sentences.
-- Skills: scannable list (comma-separated or short bullets), grouped if helpful (Clinical, Technical, Soft Skills).`
+- Skills: scannable list matching user skills input; add implied skills only when clearly supported by experience text.
+
+${RESUME_ACCURACY}`
       : `COVER LETTER RULES:
 - Length: 250–350 words, 3–4 short paragraphs, fits one page.
 - Structure: date line → "Dear Hiring Manager," → opening hook → body (2 paragraphs) → closing → "Sincerely," + applicant name only (no contact block unless user provided phone/email/location in their input).
@@ -140,6 +151,7 @@ ${input.skills.trim() || "Not provided — derive skill bullets only from the ex
 
 Contact rule: The user did NOT provide a separate phone, email, or address field. Include phone/email/city/state ONLY if they appear verbatim above in Experience, Skills, or Target role. Otherwise end the cover letter with "Sincerely," and the applicant name only.
 
+${input.docType === "resume" ? "Resume rule: Do not invent schools, degrees, graduation dates, or employment date ranges. Skip Education unless the user named a school or degree.\n" : ""}
 ${toneNote}
 
 Output the finished ${docLabel} only — no preamble, no "Here is your resume", no tips after the document.`;

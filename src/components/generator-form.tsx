@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth/client-events";
+import { sanitizeGeneratedOutput } from "@/lib/sanitize-output";
 import type { Profession, DocType } from "@/types/profession";
 import { AdSlot } from "@/components/ad-slot";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,16 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
         setResult(text);
       }
 
+      text = sanitizeGeneratedOutput({
+        text,
+        docType,
+        name: name.trim(),
+        experience: experience.trim(),
+        skills: skills.trim(),
+        targetRole: targetRole.trim() || profession.jobTitle,
+      });
+      setResult(text);
+
       toast.success("Document generated.");
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
@@ -160,7 +171,10 @@ export function GeneratorForm({ profession }: GeneratorFormProps) {
           <CardContent className="space-y-4">
             <Tabs
               value={docType}
-              onValueChange={(value) => setDocType(value as DocType)}
+              onValueChange={(value) => {
+                setDocType(value as DocType);
+                setResult("");
+              }}
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cover_letter">Cover Letter</TabsTrigger>
