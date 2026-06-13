@@ -25,6 +25,72 @@ function userProvidedContact(source: string): boolean {
   );
 }
 
+function normalizeSignOff(text: string, name: string): string {
+  const trimmedName = name.trim();
+  if (!trimmedName) return text;
+
+  const escaped = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // "Sincerely,\nJane Smith  Jane Smith" → single name
+  text = text.replace(
+    new RegExp(`(Sincerely,?\\s*\\n\\s*)${escaped}(?:\\s+${escaped})+`, "gi"),
+    `$1${trimmedName}`,
+  );
+
+  return text;
+}
+
+/** Cover letter followed by resume sections in one blob. */
+function truncateAtResumeSection(text: string): string {
+  const markers = [/\nProfessional Summary\s*\n/i, /\nExperience\s*\n/i];
+  let cutAt = text.length;
+
+  for (const marker of markers) {
+    const match = text.match(marker);
+    if (match?.index !== undefined && match.index < cutAt) {
+      cutAt = match.index;
+    }
+  }
+
+  return cutAt < text.length ? text.slice(0, cutAt).trimEnd() : text;
+}
+
+/** Resume prefixed with a full cover letter. */
+function stripCoverLetterPrefix(text: string, name: string): string {
+  const summaryMatch = text.match(/\nProfessional Summary\s*\n/i);
+  if (!summaryMatch || summaryMatch.index === undefined) return text;
+
+  const prefix = text.slice(0, summaryMatch.index);
+  if (!/Dear Hiring Manager,/i.test(prefix)) return text;
+
+  let resume = text.slice(summaryMatch.index + 1).trimStart();
+  if (!resume.toLowerCase().startsWith(name.trim().toLowerCase())) {
+    resume = `${name.trim()}\n\n${resume}`;
+  }
+  return resume;
+}
+
+function stripSincerelyFromResume(text: string): string {
+  return text.replace(/\n\s*Sincerely,?\s*\r?\n[^\n]+\s*$/i, "").trimEnd();
+}
+
+function stripLeadingCoverLetterFromResume(text: string, name: string): string {
+  if (!/^[^\n]*\n\s*Dear Hiring Manager,/i.test(text) && !/^Dear Hiring Manager,/i.test(text)) {
+    return stripCoverLetterPrefix(text, name);
+  }
+
+  const summaryIdx = text.search(/\nProfessional Summary\s*\n/i);
+  if (summaryIdx >= 0) {
+    let resume = text.slice(summaryIdx + 1).trimStart();
+    if (!resume.toLowerCase().startsWith(name.trim().toLowerCase())) {
+      resume = `${name.trim()}\n\n${resume}`;
+    }
+    return resume;
+  }
+
+  return text;
+}
+
 function fixCoverLetterOpening(text: string, targetRole: string): string {
   let output = text;
   const replacements: Array<[RegExp, string]> = [
@@ -153,15 +219,20 @@ function stripResumeFabrication(text: string, source: string): string {
 }
 
 function sanitizeCoverLetter(input: SanitizeInput): string {
-  let text = fixCoverLetterOpening(input.text, input.targetRole);
+  let text = truncateAtResumeSection(input.text);
+  text = fixCoverLetterOpening(text, input.targetRole);
   if (!userProvidedContact(userSource(input))) {
     text = stripInventedContactBlock(text);
   }
+  text = normalizeSignOff(text, input.name);
   return text.trimEnd();
 }
 
 function sanitizeResume(input: SanitizeInput): string {
-  return stripResumeFabrication(input.text, userSource(input)).trimEnd();
+  let text = stripLeadingCoverLetterFromResume(input.text, input.name);
+  text = stripResumeFabrication(text, userSource(input));
+  text = stripSincerelyFromResume(text);
+  return text.trimEnd();
 }
 
 /** Post-process model output to fix common resume/cover letter mistakes. */
