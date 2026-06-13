@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
 import { getUserPlan, planLabel } from "@/lib/plans";
 import { getCreemStatusNote, PricingTable } from "@/components/pricing-table";
+import { launchPricing } from "@/config/pricing";
 import { Badge } from "@/components/ui/badge";
 import { CheckoutSuccessRefresh } from "@/components/checkout-success-refresh";
 
@@ -32,6 +33,14 @@ export default async function PricingPage({
         <h1 className="text-3xl font-bold tracking-tight">Simple pricing</h1>
         <p className="mt-3 text-muted-foreground">
           Start free on any career page. Upgrade when you need more generations or want an ad-free experience.
+          {launchPricing.enabled && (
+            <>
+              {" "}
+              <span className="font-medium text-foreground">
+                Launch rates are our lowest — planned regular pricing is higher and may apply after launch.
+              </span>
+            </>
+          )}
         </p>
       </div>
 

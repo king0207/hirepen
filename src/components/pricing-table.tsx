@@ -1,4 +1,5 @@
 import { ButtonLink } from "@/components/button-link";
+import { formatPrice, launchPricing } from "@/config/pricing";
 import {
   getCreemConfig,
   getCreemProductId,
@@ -22,6 +23,38 @@ type PricingTableProps = {
   currentPlan?: UserPlan | null;
 };
 
+function ComparePrice({
+  amount,
+  compareAt,
+  suffix,
+}: {
+  amount: number;
+  compareAt?: number;
+  suffix?: string;
+}) {
+  const showCompare = launchPricing.enabled && compareAt && compareAt > amount;
+
+  return (
+    <div className="space-y-1">
+      {showCompare && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground line-through">{formatPrice(compareAt)}</span>
+          <Badge variant="secondary" className="border-orange-300 bg-orange-100 text-orange-900">
+            Launch deal
+          </Badge>
+        </div>
+      )}
+      <p className="text-3xl font-bold">
+        {formatPrice(amount)}
+        {suffix && <span className="text-base font-normal">{suffix}</span>}
+      </p>
+      {showCompare && (
+        <p className="text-xs font-medium text-green-700">Current lowest price</p>
+      )}
+    </div>
+  );
+}
+
 export function PricingTable({ currentPlan = null }: PricingTableProps) {
   const freeLimit = getFreeDailyLimit();
   const creemEnabled = isCreemEnabled();
@@ -30,6 +63,28 @@ export function PricingTable({ currentPlan = null }: PricingTableProps) {
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
+      {launchPricing.enabled && (
+        <div className="md:col-span-3 space-y-3 rounded-lg border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-orange-600 text-white hover:bg-orange-600">Limited-time launch</Badge>
+            <p className="text-sm font-medium text-orange-950">{launchPricing.headline}</p>
+          </div>
+          <p className="text-sm text-orange-900/90">{launchPricing.subline}</p>
+          <ul className="list-inside list-disc space-y-1 text-sm text-orange-950/85">
+            <li>
+              Pro: {formatPrice(launchPricing.pro.amount)}/mo now — planned regular{" "}
+              {formatPrice(launchPricing.pro.plannedRegular)}/mo
+            </li>
+            <li>
+              Lifetime: {formatPrice(launchPricing.lifetime.amount)} now — planned regular{" "}
+              {formatPrice(launchPricing.lifetime.plannedRegular)}
+            </li>
+          </ul>
+          <p className="text-sm font-medium text-orange-950">{launchPricing.futureNote}</p>
+          <p className="text-xs text-orange-900/75">{launchPricing.lockInNote}</p>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Free</CardTitle>
@@ -56,7 +111,11 @@ export function PricingTable({ currentPlan = null }: PricingTableProps) {
             <Badge>Popular</Badge>
           </div>
           <CardDescription>More generations, no ads</CardDescription>
-          <p className="text-3xl font-bold">$1.99<span className="text-base font-normal">/mo</span></p>
+          <ComparePrice
+            amount={launchPricing.pro.amount}
+            compareAt={launchPricing.pro.compareAt}
+            suffix={launchPricing.pro.suffix}
+          />
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>50 generations per month</p>
@@ -87,7 +146,10 @@ export function PricingTable({ currentPlan = null }: PricingTableProps) {
         <CardHeader>
           <CardTitle>Lifetime</CardTitle>
           <CardDescription>One-time payment</CardDescription>
-          <p className="text-3xl font-bold">$29.90</p>
+          <ComparePrice
+            amount={launchPricing.lifetime.amount}
+            compareAt={launchPricing.lifetime.compareAt}
+          />
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>Unlimited generations</p>
@@ -118,6 +180,13 @@ export function PricingTable({ currentPlan = null }: PricingTableProps) {
           )}
         </CardFooter>
       </Card>
+
+      {launchPricing.enabled && (
+        <p className="md:col-span-3 text-center text-xs text-muted-foreground">
+          Launch pricing is temporary. We may increase prices to planned regular rates without notice — pay
+          today to lock in current pricing.
+        </p>
+      )}
 
       {!creemEnabled && (
         <p className="md:col-span-3 text-center text-sm text-muted-foreground">

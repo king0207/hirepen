@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getEnabledProfessions } from "@/config/professions";
-import { SITE_NAME } from "@/config/site";
 import { ButtonLink } from "@/components/button-link";
+import { LaunchPricingExitDialog } from "@/components/launch-pricing-exit-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -16,6 +16,7 @@ export default function HomePage() {
 
   return (
     <div>
+      <LaunchPricingExitDialog />
       <section className="border-b bg-gradient-to-b from-primary/5 to-background">
         <div className="mx-auto max-w-6xl px-4 py-16">
           <Badge variant="secondary" className="mb-4">
