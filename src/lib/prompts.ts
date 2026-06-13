@@ -15,10 +15,11 @@ type PromptInput = {
 
 const US_FORMAT_RULES = `US MARKET FORMAT (mandatory):
 - American English spelling only (organize, center, labor, license).
-- Dates: "Month YYYY" for employment; cover letters use "Month DD, YYYY" at top when dated.
+- Employment dates on resumes: "Month YYYY" (e.g. January 2024 – May 2024).
+- Cover letter date line: use the "Today's date" given in the user message exactly (Month DD, YYYY).
 - Plain text only — no markdown, no code fences, no **bold**, no bullet symbols other than "- " or "• ".
 - Do NOT include: photo, age, date of birth, marital status, religion, or Social Security number.
-- Resume header: applicant name only, unless phone/email/city/state appear verbatim in the user's input fields below — never invent contact details.
+- Resume header: applicant name only, unless phone/email/city/state appear verbatim in the user's input — never invent contact details.
 - Cover letter sign-off: "Sincerely," then the applicant name only — no phone, email, city, or state line unless the user explicitly provided them in Experience, Skills, or Target role text.`;
 
 const ACCURACY_RULES = `ACCURACY (non-negotiable):
@@ -45,8 +46,18 @@ const COVER_LETTER_OPENING = `COVER LETTER OPENING (strict):
 - Prefer direct openings, e.g. "As a recent nursing graduate with 120 hours of Med-Surg clinical experience at City Hospital, I am ready to contribute to your New Grad RN team."`;
 
 const COVER_LETTER_AVOID = `Also avoid hollow filler unless tied to user facts:
-- "evidence-based practices", "interdisciplinary teams", "dedication to excellence", "passion for healthcare"
-- Generic praise of the employer with no link to the applicant's background.`;
+- "interdisciplinary teams", "evidence-informed practice", "evidence-based practices", "high-quality patient outcomes", "dedication to excellence", "passion for healthcare", "I am eager to bring my dedication"
+- Generic praise of the employer with no link to the applicant's background.
+- Closing paragraph longer than 2 sentences — end with a brief, confident thank-you.`;
+
+function formatLetterDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/New_York",
+  });
+}
 
 function premiumQualityNote(plan: UserPlan | undefined): string {
   if (plan === "pro" || plan === "lifetime") {
@@ -69,12 +80,13 @@ function buildSystemPrompt(
 
   const docRules =
     docType === "resume"
-      ? `RESUME RULES:
+      ? `RESUME RULES (not a cover letter — no "Dear Hiring Manager", no paragraphs of prose):
 - Target length: one US page (~350–550 words for entry-level / skilled trades / healthcare support roles).
-- Sections (in order): contact header, Professional Summary (2–3 lines), Experience, Skills, Education & Certifications (only if user provided education/certs).
-- Experience: reverse chronological. 3–5 bullets per role when user gave enough detail; fewer if input is brief.
-- Bullets: lead with action verb + task + outcome when user supplied measurable results.
-- Skills: scannable list grouped by category if helpful (Clinical, Technical, Soft Skills).`
+- Sections (in order): name header, Professional Summary (2–3 lines), Experience, Skills, Education & Certifications (only if user provided education/certs).
+- Experience: use clear role/employer labels; bullet list with "- " prefixes; reverse chronological when multiple roles exist.
+- 3–5 bullets per role when user gave enough detail; fewer if input is brief.
+- Bullets: action verb + what they did + context from user input — no essay sentences.
+- Skills: scannable list (comma-separated or short bullets), grouped if helpful (Clinical, Technical, Soft Skills).`
       : `COVER LETTER RULES:
 - Length: 250–350 words, 3–4 short paragraphs, fits one page.
 - Structure: date line → "Dear Hiring Manager," → opening hook → body (2 paragraphs) → closing → "Sincerely," + applicant name only (no contact block unless user provided phone/email/location in their input).
@@ -109,10 +121,14 @@ function buildUserPrompt(input: PromptInput): string {
       : "Tone: formal and professional — standard US business correspondence.";
 
   const docLabel = input.docType === "resume" ? "resume" : "cover letter";
+  const dateLine =
+    input.docType === "cover_letter"
+      ? `Today's date (use as the first line of the cover letter): ${formatLetterDate()}\n`
+      : "";
 
   return `Generate a ${docLabel} for this US job application.
 
-Applicant name (use exactly for sign-off / resume header): ${input.name}
+${dateLine}Applicant name (use exactly for sign-off / resume header): ${input.name}
 Target role / job title: ${input.targetRole}
 Profession page context: ${input.profession.intro.slice(0, 280)}
 
